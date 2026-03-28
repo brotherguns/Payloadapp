@@ -12,8 +12,8 @@ jobs:
     env:
       SCHEME: PS5PayloadSender
       PROJECT: PS5PayloadSender.xcodeproj
-      ARCHIVE_PATH: build/PS5PayloadSender.xcarchive
-      EXPORT_PATH: build/ipa
+      ARCHIVE_PATH: ${{ github.workspace }}/build/PS5PayloadSender.xcarchive
+      EXPORT_PATH: ${{ github.workspace }}/build/ipa
 
     steps:
       - name: Checkout
@@ -21,9 +21,6 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Show SDK info
-        run: xcodebuild -showsdks
 
       - name: Build Archive
         run: |
@@ -33,19 +30,23 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$ARCHIVE_PATH" \
-            -xcconfig ci.xcconfig \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            | xcpretty || true
+            PRODUCT_BUNDLE_IDENTIFIER=com.local.ps5payloadsender \
+            IPHONEOS_DEPLOYMENT_TARGET=16.0
+
+      - name: Show archive contents (debug)
+        run: find "$ARCHIVE_PATH" -type f | head -40
 
       - name: Package IPA (unsigned)
         run: |
-          mkdir -p "$EXPORT_PATH"
-          APP=$(find "$ARCHIVE_PATH/Products/Applications" -name "*.app" | head -1)
+          APP=$(find "$ARCHIVE_PATH/Products/Applications" -name "*.app" -maxdepth 1 | head -1)
+          echo "Found app: $APP"
           mkdir -p Payload
           cp -r "$APP" Payload/
+          mkdir -p "$EXPORT_PATH"
           zip -r "$EXPORT_PATH/PS5PayloadSender.ipa" Payload/
           rm -rf Payload
 
